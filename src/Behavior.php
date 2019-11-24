@@ -143,24 +143,15 @@ class Behavior extends PhalconBehavior
      */
     public function processDelete(ModelInterface $model): void
     {
-        $parent = $model::findFirst([
-            self::$primaryKey . ' = :parent:',
-            'bind' => [
-                'parent' => $model->readAttribute(self::$parentKey)
-            ]
-        ]);
-
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
             '`' . self::$rightDbColumn . '` = `' . self::$rightDbColumn . '` - 1, ' .
             '`' . self::$leftDbColumn . '` = `' . self::$leftDbColumn . '` - 1, ' .
-            '`' . self::$depthDbColumn . '` = `' . self::$depthDbColumn . '` - 1, ' .
-            '`' . self::$parentDbColumn . '` = :parent ' .
+            '`' . self::$depthDbColumn . '` = `' . self::$depthDbColumn . '` - 1 ' .
             'WHERE `' . self::$leftDbColumn . '` > :left AND `' . self::$rightDbColumn . '` < :right';
 
         $model->getWriteConnection()->query($query, [
             'right' => $model->readAttribute(self::$rightKey),
             'left' => $model->readAttribute(self::$leftKey),
-            'parent' => $parent ? $parent->readAttribute(self::$primaryKey) : 0
         ]);
 
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
@@ -175,6 +166,14 @@ class Behavior extends PhalconBehavior
             'WHERE `' . self::$leftDbColumn . '` > :right';
         $model->getWriteConnection()->query($query, [
             'right' => $model->readAttribute(self::$rightKey)
+        ]);
+
+        // update parent for immediate sub-nodes of current category
+        $query = 'UPDATE `' . $model->getSource() . '` SET' .
+            ' `' . self::$parentDbColumn . '` = 0 ' .
+            'WHERE `' . self::$parentDbColumn . '` = :parent';
+        $model->getWriteConnection()->query($query, [
+            'parent' => $model->readAttribute(self::$primaryKey)
         ]);
     }
 
