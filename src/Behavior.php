@@ -160,7 +160,7 @@ class Behavior extends PhalconBehavior
         $model->getWriteConnection()->query($query, [
             'right' => $model->readAttribute(self::$rightKey),
             'left' => $model->readAttribute(self::$leftKey),
-            'parent' => $parent ? $parent->readAttribute(self::$parentKey) : 0
+            'parent' => $parent ? $parent->readAttribute(self::$primaryKey) : 0
         ]);
 
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
