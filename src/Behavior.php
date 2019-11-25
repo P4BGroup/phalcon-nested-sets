@@ -177,6 +177,9 @@ class Behavior extends PhalconBehavior
         ]);
     }
 
+    /**
+     * @param ModelInterface $model
+     */
     public function processUpdate(ModelInterface $model): void
     {
         $currentModel = $model::findFirst([
@@ -203,16 +206,24 @@ class Behavior extends PhalconBehavior
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
             '`' . self::$depthDbColumn . '` = `' . self::$depthDbColumn . '` - 1, ' .
             '`' . self::$rightDbColumn . '` = `' . self::$rightDbColumn . '` - 1, ' .
-            '`' . self::$leftDbColumn . '` = `' . self::$leftDbColumn . '` - 1, ' .
-            '`' . self::$parentDbColumn . '` = :parentID ' .
+            '`' . self::$leftDbColumn . '` = `' . self::$leftDbColumn . '` - 1 ' .
             'WHERE `' . self::$leftDbColumn . '` > :left AND `' . self::$rightDbColumn . '` < :right ' .
             'AND `' . self::$primaryDbColumn . '` != :id';
         $model->getWriteConnection()->query($query, [
             'right' => $currentModel->readAttribute(self::$rightKey),
             'left' => $currentModel->readAttribute(self::$leftKey),
-            'parentID' => $currentModel->readAttribute(self::$parentKey),
             'id' => $model->readAttribute(self::$primaryKey),
         ]);
+
+        // update parent for immediate sub-nodes of current category
+        $query = 'UPDATE `' . $model->getSource() . '` SET' .
+            ' `' . self::$parentDbColumn . '` = :parent ' .
+            'WHERE `' . self::$parentDbColumn . '` = :id';
+        $model->getWriteConnection()->query($query, [
+            'id' => $currentModel->readAttribute(self::$primaryKey),
+            'parent' => $currentModel->readAttribute(self::$parentKey)
+        ]);
+
         // update nodes on the right of the tree
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
             '`' . self::$rightDbColumn . '` = `' . self::$rightDbColumn . '` - 2 ' .
@@ -243,12 +254,15 @@ class Behavior extends PhalconBehavior
         }
 
         $right = $parentModel->readAttribute(self::$rightKey);
+        $depth = $parentModel->readAttribute(self::$depthKey);
         if ($parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$rightKey)
             && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)) {
             $right = $parentModel->readAttribute(self::$rightKey) - 2;
+            $depth = $parentModel->readAttribute(self::$depthKey) + 1;
         } elseif ($parentModel->readAttribute(self::$rightKey) < $currentModel->readAttribute(self::$rightKey)
             && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)) {
             $right = $parentModel->readAttribute(self::$rightKey) - 1;
+            $depth = $parentModel->readAttribute(self::$depthKey);
         }
 
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
@@ -268,8 +282,8 @@ class Behavior extends PhalconBehavior
         $model->assign([
             self::$leftKey => $right,
             self::$rightKey => $right + 1,
-            self::$depthKey => $parentModel->readAttribute(self::$depthKey) + 1,
-            self::$parentKey => 0,
+            self::$depthKey => $depth,
+            self::$parentKey => $parentModel->readAttribute(self::$primaryKey),
         ]);
     }
 }
