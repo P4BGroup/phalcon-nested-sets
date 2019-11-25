@@ -200,8 +200,6 @@ class Behavior extends PhalconBehavior
             return;
         }
 
-        $maxRight = $model::maximum(['column' => self::$rightKey]);
-
         // upgrade children of current node in the tree
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
             '`' . self::$depthDbColumn . '` = `' . self::$depthDbColumn . '` - 1, ' .
@@ -241,6 +239,7 @@ class Behavior extends PhalconBehavior
             'id' => $model->readAttribute(self::$primaryKey),
         ]);
 
+        $maxRight = $model::maximum(['column' => self::$rightKey]);
         // unset the parent - make the node a root
         if (!$parentModel) {
             $model->assign([
