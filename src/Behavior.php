@@ -196,11 +196,78 @@ class Behavior extends PhalconBehavior
         ]);
 
         // parent has changed (unset parent or set a new parent)
-        if ($model->readAttribute(self::$parentKey) == $currentModel->readAttribute(self::$parentKey)) {
+        // or current left is not set
+        if (
+            $model->readAttribute(self::$leftKey) > 0
+            && $model->readAttribute(self::$parentKey) == $currentModel->readAttribute(self::$parentKey)
+        ) {
             return;
         }
 
-        // upgrade children of current node in the tree
+        // upgrade children of current node in the tree, but only if we currently have a tree set
+        $this->preUpdateHook($model, $currentModel);
+
+        $maxRight = $model::maximum(['column' => self::$rightKey]);
+        // unset the parent - make the node a root
+        if (!$parentModel) {
+            $model->assign([
+                self::$leftKey => $maxRight + 1,
+                self::$rightKey => $maxRight + 2,
+                self::$depthKey => 0,
+                self::$parentKey => 0,
+            ]);
+
+            return;
+        }
+
+        $right = $parentModel->readAttribute(self::$rightKey);
+        $depth = $parentModel->readAttribute(self::$depthKey);
+        if (
+            $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$rightKey)
+            && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)
+        ) {
+            $right = $parentModel->readAttribute(self::$rightKey) - 2;
+            $depth = $parentModel->readAttribute(self::$depthKey) + 1;
+        } elseif (
+            $parentModel->readAttribute(self::$rightKey) < $currentModel->readAttribute(self::$rightKey)
+            && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)
+        ) {
+            $right = $parentModel->readAttribute(self::$rightKey) - 1;
+            $depth = $parentModel->readAttribute(self::$depthKey);
+        }
+
+        $query = 'UPDATE `' . $model->getSource() . '` SET ' .
+            '`' . self::$rightDbColumn . '` = `' . self::$rightDbColumn . '` + 2 ' .
+            'WHERE `' . self::$rightDbColumn . '` >= :right';
+        $model->getWriteConnection()->query($query, [
+            'right' => $right,
+        ]);
+
+        $query = 'UPDATE `' . $model->getSource() . '` SET ' .
+            '`' . self::$leftDbColumn . '` = `' . self::$leftDbColumn . '` + 2 ' .
+            'WHERE `' . self::$leftDbColumn . '` >= :right';
+        $model->getWriteConnection()->query($query, [
+            'right' => $right,
+        ]);
+
+        $model->assign([
+            self::$leftKey => $right,
+            self::$rightKey => $right + 1,
+            self::$depthKey => $depth,
+            self::$parentKey => $parentModel->readAttribute(self::$primaryKey),
+        ]);
+    }
+
+    /**
+     * @param ModelInterface $model
+     * @param $currentModel
+     */
+    private function preUpdateHook(ModelInterface $model, ModelInterface $currentModel): void
+    {
+        if (!$currentModel->readAttribute(self::$rightKey) > 0) {
+            return;
+        }
+
         $query = 'UPDATE `' . $model->getSource() . '` SET ' .
             '`' . self::$depthDbColumn . '` = `' . self::$depthDbColumn . '` - 1, ' .
             '`' . self::$rightDbColumn . '` = `' . self::$rightDbColumn . '` - 1, ' .
@@ -237,52 +304,6 @@ class Behavior extends PhalconBehavior
         $model->getWriteConnection()->query($query, [
             'right' => $currentModel->readAttribute(self::$rightKey),
             'id' => $model->readAttribute(self::$primaryKey),
-        ]);
-
-        $maxRight = $model::maximum(['column' => self::$rightKey]);
-        // unset the parent - make the node a root
-        if (!$parentModel) {
-            $model->assign([
-                self::$leftKey => $maxRight + 1,
-                self::$rightKey => $maxRight + 2,
-                self::$depthKey => 0,
-                self::$parentKey => 0,
-            ]);
-
-            return;
-        }
-
-        $right = $parentModel->readAttribute(self::$rightKey);
-        $depth = $parentModel->readAttribute(self::$depthKey);
-        if ($parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$rightKey)
-            && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)) {
-            $right = $parentModel->readAttribute(self::$rightKey) - 2;
-            $depth = $parentModel->readAttribute(self::$depthKey) + 1;
-        } elseif ($parentModel->readAttribute(self::$rightKey) < $currentModel->readAttribute(self::$rightKey)
-            && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)) {
-            $right = $parentModel->readAttribute(self::$rightKey) - 1;
-            $depth = $parentModel->readAttribute(self::$depthKey);
-        }
-
-        $query = 'UPDATE `' . $model->getSource() . '` SET ' .
-            '`' . self::$rightDbColumn . '` = `' . self::$rightDbColumn . '` + 2 ' .
-            'WHERE `' . self::$rightDbColumn . '` >= :right';
-        $model->getWriteConnection()->query($query, [
-            'right' => $right,
-        ]);
-
-        $query = 'UPDATE `' . $model->getSource() . '` SET ' .
-            '`' . self::$leftDbColumn . '` = `' . self::$leftDbColumn . '` + 2 ' .
-            'WHERE `' . self::$leftDbColumn . '` >= :right';
-        $model->getWriteConnection()->query($query, [
-            'right' => $right,
-        ]);
-
-        $model->assign([
-            self::$leftKey => $right,
-            self::$rightKey => $right + 1,
-            self::$depthKey => $depth,
-            self::$parentKey => $parentModel->readAttribute(self::$primaryKey),
         ]);
     }
 }
