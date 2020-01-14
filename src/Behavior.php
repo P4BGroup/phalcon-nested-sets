@@ -222,8 +222,10 @@ class Behavior extends PhalconBehavior
 
         $right = $parentModel->readAttribute(self::$rightKey);
         $depth = $parentModel->readAttribute(self::$depthKey);
-        if (
-            $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$rightKey)
+        if ($currentModel->readAttribute(self::$rightKey) == 0) {
+            $right = $parentModel->readAttribute(self::$rightKey);
+            $depth = $parentModel->readAttribute(self::$depthKey) + 1;
+        } elseif ($parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$rightKey)
             && $parentModel->readAttribute(self::$rightKey) > $currentModel->readAttribute(self::$leftKey)
         ) {
             $right = $parentModel->readAttribute(self::$rightKey) - 2;
