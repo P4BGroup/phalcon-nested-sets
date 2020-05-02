@@ -1,3 +1,5 @@
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FP4BGroup%2Fphalcon-nested-sets.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FP4BGroup%2Fphalcon-nested-sets?ref=badge_shield)
+
 Nested Set Behaviour
 --- 
 
@@ -53,3 +55,7 @@ Similar implementations on other frameworks
 * https://github.com/blt04/doctrine2-nestedset - doctrine
 * https://github.com/bartko-s/stefano-tree - zend / pdo
 * https://github.com/creocoder/yii2-nested-sets - yii
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FP4BGroup%2Fphalcon-nested-sets.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FP4BGroup%2Fphalcon-nested-sets?ref=badge_large)
